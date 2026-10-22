@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enterprise Khata Book - Multi-Department Ledger</title>
+  <link rel="stylesheet" href="/static/css/style.css?v=9.0">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Header Navigation -->
+    <header class="app-header no-print">
+      <div class="header-left">
+        <div class="brand-badge">
+          <div class="brand-app-icon" title="Enterprise Khata Book">📒</div>
+          <div class="brand-info">
+            <div class="brand-title-wrap">
+              <span class="brand-name">ENTERPRISE KHATA BOOK</span>
+              <span class="version-tag">SYSTEM</span>
+            </div>
+            <span class="brand-tagline">Hierarchical Multi-Department Ledger</span>
+          </div>
+        </div>
+
+        <div class="header-divider"></div>
+
+        <!-- Segmented View Switcher -->
+        <div class="segmented-control">
+          <button id="navViewLedger" class="seg-btn active" title="Hierarchical Tree & Khata Ledger">
+            🌲 Department Ledger
+          </button>
+          <button id="navViewOverview" class="seg-btn" title="Organization-wide Financial Overview">
+            📊 Overview
+          </button>
+        </div>
+      </div>
+
+      <!-- Center: Active Department Switcher -->
+      <div class="header-center" id="navCenterControls">
+        <div class="dept-picker">
+          <span class="dept-picker-label">Active Dept:</span>
+          <select id="deptSelect" class="dept-picker-select"></select>
+        </div>
+        <button id="btnNewDept" class="btn btn-outline btn-compact" title="Create a new root Department (Level 1)">
+          ➕ New Dept
+        </button>
+      </div>
+
+      <!-- Right: User Identity & Theme Toggle -->
+      <div class="header-right">
+        <!-- Theme Toggle -->
+        <button id="themeToggleBtn" class="icon-btn" title="Toggle Theme (Dark / Light)">
+          <span id="themeIcon">🌙</span>
+        </button>
+
+        <!-- User Role Profile Pill -->
+        <div class="user-profile-pill">
+          <div class="user-avatar-circle" id="userAvatar">A</div>
+          <div class="user-profile-details">
+            <select id="userSelect" class="user-select-field" title="Switch Acting User Context"></select>
+          </div>
+          <span id="userBadge" class="role-pill">Admin</span>
+        </div>
+      </div>
+    </header>
+
+    <!-- VIEW 1: DEPARTMENT TREE & HIERARCHICAL KHATA LEDGER (Default Work Area) -->
+    <main id="departmentLedgerView" class="main-view app-workspace">
+      <!-- Left Sidebar: Hierarchy Tree (Up to 5 Levels) -->
+      <aside class="hierarchy-sidebar no-print">
+        <div class="sidebar-top-bar">
+          <span class="sidebar-heading">Hierarchy Tree</span>
+          <span class="depth-badge-limit" title="Maximum hierarchy depth strictly enforced">MAX_DEPTH = 5</span>
+        </div>
+        <div class="tree-scroll-pane" id="treeContainer">
+          <div class="loading-state">Loading hierarchy...</div>
+        </div>
+      </aside>
+
+      <!-- Right: Ledger Workspace -->
+      <section class="ledger-workspace">
+        <!-- Breadcrumbs Trail -->
+        <nav class="breadcrumb-container no-print">
+          <ol class="breadcrumb-path" id="breadcrumbsList">
+            <li>Select a department node</li>
+          </ol>
+        </nav>
+
+        <!-- Node Control Card -->
+        <div class="node-control-card no-print">
+          <div class="node-title-meta">
+            <h2 id="nodeTitle" class="node-heading">Loading...</h2>
+            <span id="nodeDepthBadge" class="level-indicator level-1">Depth 1</span>
+          </div>
+          <div class="node-actions-toolbar" id="nodeActions">
+            <button id="btnAddSubgroup" class="btn btn-primary btn-sm">
+              ➕ Add Subgroup
+            </button>
+            <button id="btnMoveNode" class="btn btn-secondary btn-sm" title="Move this node under another parent">
+              🔀 Move
+            </button>
+            <button id="btnRenameNode" class="btn btn-secondary btn-sm" title="Rename node">
+              ✏️ Rename
+            </button>
+            <button id="btnDeleteNode" class="btn btn-danger-outline btn-sm" title="Delete node and its descendants">
+              🗑️ Delete
+            </button>
+          </div>
+        </div>
+
+        <!-- Level 5 Max Depth Banner -->
+        <div id="maxDepthBanner" class="alert-box alert-warning hidden no-print">
+          <span class="alert-icon">⚠️</span>
+          <div class="alert-text">
+            <strong>Maximum Hierarchy Limit Reached (Level 5):</strong>
+            This node is at the maximum allowed depth of 5. Further child subgroups cannot be created beneath it.
+          </div>
+        </div>
+
+        <!-- Financial KPI Summary Cards -->
+        <div class="metrics-dashboard-grid no-print">
+          <!-- Card 1: Total Jama -->
+          <div class="metric-box card-jama">
+            <div class="metric-top">
+              <span class="metric-name">Total Jama (Credits)</span>
+              <span class="status-chip chip-jama">Inflow</span>
+            </div>
+            <div class="metric-amount text-jama" id="metricTotalCredits">₹0.00</div>
+            <div class="metric-sub-bar">
+              <span>Direct: <strong id="metricDirectCredits">₹0.00</strong></span>
+              <span>Subgroups: <strong id="metricDescCredits">₹0.00</strong></span>
+            </div>
+          </div>
+
+          <!-- Card 2: Total Udhar -->
+          <div class="metric-box card-udhar">
+            <div class="metric-top">
+              <span class="metric-name">Total Udhar (Debits)</span>
+              <span class="status-chip chip-udhar">Outflow</span>
+            </div>
+            <div class="metric-amount text-udhar" id="metricTotalDebits">₹0.00</div>
+            <div class="metric-sub-bar">
+              <span>Direct: <strong id="metricDirectDebits">₹0.00</strong></span>
+              <span>Subgroups: <strong id="metricDescDebits">₹0.00</strong></span>
+            </div>
+          </div>
+
+          <!-- Card 3: Net Roll-up Balance -->
+          <div class="metric-box card-balance">
+            <div class="metric-top">
+              <span class="metric-name">Net Roll-up Balance</span>
+              <span class="status-chip chip-balance" id="balanceStatusChip">Balanced</span>
+            </div>
+            <div class="metric-amount" id="metricNetBalance">₹0.00</div>
+            <div class="metric-sub-bar">
+              <span>Total Transactions: <strong id="metricTotalCount">0</strong></span>
+              <span>Direct: <strong id="metricDirectCount">0</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Cash Flow Trends (Visual Chart) -->
+        <div class="analytics-card no-print" id="trendsCard">
+          <div class="analytics-header">
+            <div class="analytics-title-group">
+              <span class="analytics-icon">📈</span>
+              <div>
+                <strong class="analytics-heading">Cash Flow Trends</strong>
+                <span class="analytics-caption">Monthly Inflow (Jama) vs Outflow (Udhar) comparison</span>
+              </div>
+            </div>
+            <div class="analytics-legend">
+              <span class="legend-badge"><span class="legend-color color-jama"></span> Jama (Credits)</span>
+              <span class="legend-badge"><span class="legend-color color-udhar"></span> Udhar (Debits)</span>
+            </div>
+          </div>
+          <div class="chart-canvas-wrap" id="trendChartContainer">
+            <!-- Dynamic SVG Chart -->
+          </div>
+        </div>
+
+        <!-- Ledger Entries Panel -->
+        <div class="ledger-panel no-print">
+          <!-- Panel Header: Tabs & Actions -->
+          <div class="panel-header">
+            <div class="ledger-tabs">
+              <button class="ledger-tab active" id="tabDirectEntries">
+                Direct Entries (<span id="directCountBadge">0</span>)
+              </button>
+              <button class="ledger-tab" id="tabConsolidatedEntries">
+                Consolidated Roll-up Ledger (<span id="consolidatedCountBadge">0</span>)
+              </button>
+            </div>
+            <div class="panel-actions">
+              <button id="btnExportCSV" class="btn btn-secondary btn-sm" title="Export filtered transactions to CSV">
+                📄 Export CSV
+              </button>
+              <button id="btnPrintPDF" class="btn btn-primary btn-sm" title="Generate official Financial Ledger statement form">
+                📜 Official Statement / PDF
+              </button>
+              <button id="btnNewEntry" class="btn btn-success btn-sm">
+                ➕ Record Khata Entry
+              </button>
+            </div>
+          </div>
+
+          <!-- Professional Filter Bar: Search, Date Range Pills & Type -->
+          <div class="filter-controls-bar">
+            <!-- Search Input -->
+            <div class="search-field-wrap">
+              <span class="search-lens">🔍</span>
+              <input type="text" id="tableSearchInput" placeholder="Search by note, voucher #, reference..." class="search-text-input">
+              <button id="btnClearSearch" class="clear-btn hidden" title="Clear search">&times;</button>
+            </div>
+
+            <!-- Date Filter Pills -->
+            <div class="date-filter-group">
+              <span class="filter-caption">Date Range:</span>
+              <div class="date-pills">
+                <button class="date-pill active" data-date-filter="all">All Time</button>
+                <button class="date-pill" data-date-filter="month">This Month</button>
+                <button class="date-pill" data-date-filter="quarter">This Quarter</button>
+                <button class="date-pill" data-date-filter="year">This Year</button>
+                <button class="date-pill" data-date-filter="custom">Custom 📅</button>
+              </div>
+
+              <!-- Inline Date Range Picker -->
+              <div id="customDateRangeBox" class="inline-date-picker hidden">
+                <input type="date" id="dateFilterStart" class="date-picker-input" title="From Date">
+                <span class="date-range-sep">to</span>
+                <input type="date" id="dateFilterEnd" class="date-picker-input" title="To Date">
+              </div>
+            </div>
+
+            <!-- Type Filter Pills -->
+            <div class="type-filter-group">
+              <div class="type-pills">
+                <button class="type-pill active" data-type-filter="all">All</button>
+                <button class="type-pill" data-type-filter="CREDIT">+ Jama</button>
+                <button class="type-pill" data-type-filter="DEBIT">- Udhar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Floating Bulk Action Bar -->
+          <div id="bulkActionBar" class="bulk-docked-bar hidden">
+            <div class="bulk-info">
+              <span class="bulk-check-badge">✓</span>
+              <span><strong id="bulkSelectedCount">0</strong> transactions selected</span>
+            </div>
+            <div class="bulk-actions-group">
+              <button id="btnBulkMove" class="btn btn-sm btn-secondary">
+                📦 Move to Node
+              </button>
+              <button id="btnBulkExport" class="btn btn-sm btn-secondary">
+                📥 Export Selected
+              </button>
+              <button id="btnBulkDelete" class="btn btn-sm btn-danger">
+                🗑️ Delete Selected
+              </button>
+              <button id="btnCancelBulk" class="btn-clear-selection">
+                Clear
+              </button>
+            </div>
+          </div>
+
+          <!-- Ledger Table -->
+          <div class="table-responsive-box printable-area">
+            <table class="khata-data-table" id="entriesTable">
+              <thead>
+                <tr>
+                  <th class="col-check">
+                    <input type="checkbox" id="selectAllCheckbox" title="Select all visible">
+                  </th>
+                  <th class="col-date sortable" data-sort="entry_date">
+                    Date <span class="sort-icon" id="sort-entry_date">▼</span>
+                  </th>
+                  <th class="col-ref sortable" data-sort="reference">
+                    Voucher / Ref <span class="sort-icon" id="sort-reference"></span>
+                  </th>
+                  <th class="col-desc sortable" data-sort="description">
+                    Description <span class="sort-icon" id="sort-description"></span>
+                  </th>
+                  <th id="thOriginNode" class="col-node sortable" style="display: none;" data-sort="node_name">
+                    Origin Subgroup <span class="sort-icon" id="sort-node_name"></span>
+                  </th>
+                  <th class="col-amount sortable text-right" data-sort="debit">
+                    Udhar (Debit ₹) <span class="sort-icon" id="sort-debit"></span>
+                  </th>
+                  <th class="col-amount sortable text-right" data-sort="credit">
+                    Jama (Credit ₹) <span class="sort-icon" id="sort-credit"></span>
+                  </th>
+                  <th class="col-action text-center no-print">Action</th>
+                </tr>
+              </thead>
+              <tbody id="entriesTableBody">
+                <tr><td colspan="8" class="empty-state">No transactions recorded yet. Click "Record Khata Entry" to add one.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Pagination Footer -->
+          <div class="pagination-footer no-print">
+            <div class="pagination-left-wrap">
+              <span class="pagination-text">Rows:</span>
+              <select id="pageSizeSelect" class="page-size-picker">
+                <option value="5">5</option>
+                <option value="10" selected>10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+              </select>
+              <span id="paginationInfo" class="pagination-stat-text">Showing 0 of 0</span>
+            </div>
+
+            <div class="pagination-nav-group">
+              <button id="btnPageFirst" class="page-nav-btn" title="First page">⏮</button>
+              <button id="btnPagePrev" class="page-nav-btn" title="Previous page">◀ Prev</button>
+              <span id="paginationCurrentPage" class="page-number-display">Page 1 of 1</span>
+              <button id="btnPageNext" class="page-nav-btn" title="Next page">Next ▶</button>
+              <button id="btnPageLast" class="page-nav-btn" title="Last page">⏭</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- VIEW 2: GLOBAL ORGANIZATION OVERVIEW DASHBOARD -->
+    <main id="globalOverviewView" class="main-view hidden no-print">
+      <div class="view-content-wrap">
+        <div class="page-title-bar">
+          <div>
+            <h2 class="page-heading">Organization Financial Dashboard</h2>
+            <p class="page-subheading">Consolidated real-time balances rolled up across all departments</p>
+          </div>
+          <button id="btnOverviewNewDept" class="btn btn-primary">➕ Create Department</button>
+        </div>
+
+        <!-- Top Grand Metrics -->
+        <div class="overview-metrics-row">
+          <div class="kpi-card">
+            <span class="kpi-title">Active Departments</span>
+            <div class="kpi-num" id="ovTotalDepts">0</div>
+            <span class="kpi-subtext" id="ovTotalNodes">0 total hierarchy nodes</span>
+          </div>
+          <div class="kpi-card accent-green">
+            <span class="kpi-title">Grand Jama (Total Inflows)</span>
+            <div class="kpi-num text-jama" id="ovTotalCredits">₹0.00</div>
+            <span class="kpi-subtext">Consolidated revenue & receipts</span>
+          </div>
+          <div class="kpi-card accent-red">
+            <span class="kpi-title">Grand Udhar (Total Outflows)</span>
+            <div class="kpi-num text-udhar" id="ovTotalDebits">₹0.00</div>
+            <span class="kpi-subtext">Consolidated expenses & payroll</span>
+          </div>
+          <div class="kpi-card accent-blue">
+            <span class="kpi-title">Net Organization Balance</span>
+            <div class="kpi-num" id="ovNetBalance">₹0.00</div>
+            <span class="kpi-subtext" id="ovBalanceBadge">Net Surplus</span>
+          </div>
+        </div>
+
+        <!-- Departments Grid -->
+        <div class="dashboard-section">
+          <div class="section-title">Department Ledgers</div>
+          <div class="departments-grid" id="overviewDeptsGrid">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- MODALS -->
+  <!-- 1. Create Node Modal -->
+  <div id="createNodeModal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modalNodeTitle">Create Subgroup</h3>
+        <button class="modal-close-btn" data-close>&times;</button>
+      </div>
+      <form id="createNodeForm">
+        <div class="modal-body">
+          <div class="depth-preview-pill">
+            <div class="depth-preview-col">
+              <span class="preview-label">Parent:</span>
+              <strong id="modalParentName">Root</strong>
+            </div>
+            <div class="depth-preview-col">
+              <span class="preview-label">Resulting Depth:</span>
+              <span id="modalNewDepthBadge" class="level-indicator level-1">Depth 1</span>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="nodeNameInput">Node Name / Title <span class="required">*</span></label>
+            <input type="text" id="nodeNameInput" class="form-control" placeholder="e.g. Operations, Payroll, Fleet..." required autofocus>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Create Node</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Record Khata Entry Modal -->
+  <div id="createEntryModal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Record Khata Transaction</h3>
+        <button class="modal-close-btn" data-close>&times;</button>
+      </div>
+      <form id="createEntryForm">
+        <div class="modal-body">
+          <div class="entry-type-grid">
+            <label class="entry-type-card">
+              <input type="radio" name="entryType" value="CREDIT" checked>
+              <div class="type-box type-box-jama">
+                <span class="type-badge-icon">📥</span>
+                <strong>JAMA (Credit / Inflow)</strong>
+                <small>Payment received, fee deposit, grant</small>
+              </div>
+            </label>
+            <label class="entry-type-card">
+              <input type="radio" name="entryType" value="DEBIT">
+              <div class="type-box type-box-udhar">
+                <span class="type-badge-icon">📤</span>
+                <strong>UDHAR (Debit / Outflow)</strong>
+                <small>Expense, invoice, payroll, utility bill</small>
+              </div>
+            </label>
+          </div>
+
+          <div class="form-grid-2">
+            <div class="form-group">
+              <label for="entryAmount">Amount (₹ INR) <span class="required">*</span></label>
+              <input type="number" id="entryAmount" class="form-control" step="0.01" min="0.01" placeholder="0.00" required>
+            </div>
+            <div class="form-group">
+              <label for="entryDate">Entry Date <span class="required">*</span></label>
+              <input type="date" id="entryDate" class="form-control" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="entryReference">Reference / Voucher / Invoice #</label>
+            <input type="text" id="entryReference" class="form-control" placeholder="e.g. INV-2026-091, CHQ-4820">
+          </div>
+
+          <div class="form-group">
+            <label for="entryDescription">Description / Particulars <span class="required">*</span></label>
+            <textarea id="entryDescription" class="form-control" rows="2" placeholder="Explain the purpose of this entry..." required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+          <button type="submit" class="btn btn-success">Save Entry</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. Move Node Modal -->
+  <div id="moveNodeModal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Move Hierarchy Node</h3>
+        <button class="modal-close-btn" data-close>&times;</button>
+      </div>
+      <form id="moveNodeForm">
+        <div class="modal-body">
+          <p class="modal-desc">
+            Moving <strong id="moveNodeTargetName">Node</strong> and all of its descendants to a new parent node.
+          </p>
+          <div class="form-group">
+            <label for="moveNewParentSelect">Select New Parent Node <span class="required">*</span></label>
+            <select id="moveNewParentSelect" class="form-control" required></select>
+          </div>
+          <div id="movePreviewAlert" class="alert-box alert-info">
+            <span>Target parent depth: <strong id="moveTargetDepth">--</strong> | Subtree height: <strong id="moveSubtreeHeight">--</strong></span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Confirm Move</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 4. Rename Node Modal -->
+  <div id="renameNodeModal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Rename Node</h3>
+        <button class="modal-close-btn" data-close>&times;</button>
+      </div>
+      <form id="renameNodeForm">
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="renameNodeInput">New Node Name <span class="required">*</span></label>
+            <input type="text" id="renameNodeInput" class="form-control" required autofocus>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Rename</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 5. Bulk Move Entries Modal -->
+  <div id="bulkMoveModal" class="modal-overlay hidden no-print">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Bulk Move Transactions</h3>
+        <button class="modal-close-btn" data-close>&times;</button>
+      </div>
+      <form id="bulkMoveForm">
+        <div class="modal-body">
+          <p class="modal-desc">
+            Moving <strong id="bulkMoveCountLabel">0</strong> selected transactions to another subgroup in this department.
+          </p>
+          <div class="form-group">
+            <label for="bulkMoveTargetSelect">Select Destination Subgroup <span class="required">*</span></label>
+            <select id="bulkMoveTargetSelect" class="form-control" required></select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-close>Cancel</button>
+          <button type="submit" class="btn btn-primary">Move Transactions</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 6. Official Statement Preview Modal -->
+  <div id="reportModal" class="modal-overlay hidden no-print">
+    <div class="modal-card modal-card-xl">
+      <div class="modal-header">
+        <div class="modal-title-with-badge">
+          <h3>📜 Official Ledger Statement Form</h3>
+          <span class="report-org-tag">CONFIDENTIAL FINANCIAL LEDGER</span>
+        </div>
+        <button class="modal-close-btn" data-close>&times;</button>
+      </div>
+      <div class="modal-body report-modal-body">
+        <div class="report-options-bar no-print">
+          <div class="report-scope-toggle">
+            <span class="scope-label">Entries Scope:</span>
+            <label class="radio-inline">
+              <input type="radio" name="reportScope" id="scopeConsolidated" value="consolidated" checked>
+              <span>Consolidated Ledger (Includes All Subgroups)</span>
+            </label>
+            <label class="radio-inline">
+              <input type="radio" name="reportScope" id="scopeDirect" value="direct">
+              <span>Direct Node Entries Only</span>
+            </label>
+          </div>
+          <div class="report-action-buttons">
+            <button id="btnTriggerPrint" class="btn btn-primary btn-sm">
+              🖨️ Print / Save as PDF
+            </button>
+          </div>
+        </div>
+
+        <div class="report-preview-scroll-frame">
+          <div id="modalReportPreviewTarget"></div>
+        </div>
+      </div>
+      <div class="modal-footer no-print">
+        <button type="button" class="btn btn-secondary" data-close>Close</button>
+        <button type="button" id="btnModalPrintDoc" class="btn btn-primary">
+          🖨️ Print / Save as PDF
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Official Printable Document Container (Rendered directly in DOM for print) -->
+  <div id="officialReportContainer" class="official-report-document">
+    <!-- Populated dynamically with official logo and letterhead -->
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="toastContainer" class="toast-stack no-print"></div>
+
+  <script src="/static/js/app.js?v=8.0"></script>
+</body>
+</html>
